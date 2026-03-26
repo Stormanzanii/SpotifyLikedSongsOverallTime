@@ -6,6 +6,7 @@
     const TITLE_SELECTOR = "h1";
     const CONTAINER_ID = "liked-songs-overall-time-container";
     const LABEL_ID = "liked-songs-overall-time-label";
+    const SUBLABEL_ID = "liked-songs-overall-time-sublabel";
     const BUTTON_ID = "liked-songs-overall-time-button";
     const CACHE_KEY = "liked-songs-overall-time-cache-v4";
 
@@ -106,16 +107,7 @@
         const days = Math.floor(totalSeconds / 86400);
         const hours = Math.floor((totalSeconds % 86400) / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
-
-        const parts = [];
-        if (days > 0) {
-            parts.push(`${days} day${days === 1 ? "" : "s"}`);
-        }
-        if (hours > 0) {
-            parts.push(`${hours} hr`);
-        }
-        parts.push(`${minutes} min`);
-        return parts.join(" ");
+        return `${days} day${days === 1 ? "" : "s"} ${hours} hr ${minutes} min`;
     }
 
     function formatUpdatedAt(timestamp) {
@@ -143,14 +135,20 @@
             container.className = "main-entityHeader-metaData main-type-mesto";
             container.style.marginTop = "8px";
             container.style.display = "flex";
-            container.style.alignItems = "center";
-            container.style.gap = "12px";
-            container.style.flexWrap = "wrap";
+            container.style.flexDirection = "column";
+            container.style.alignItems = "flex-start";
+            container.style.gap = "6px";
 
             const label = document.createElement("div");
             label.id = LABEL_ID;
-            label.style.fontSize = "0.875rem";
-            label.style.color = "var(--spice-subtext, rgba(255,255,255,0.7))";
+            label.style.fontSize = "1rem";
+            label.style.fontWeight = "700";
+            label.style.color = "var(--spice-text, #fff)";
+
+            const sublabel = document.createElement("div");
+            sublabel.id = SUBLABEL_ID;
+            sublabel.style.fontSize = "0.8125rem";
+            sublabel.style.color = "var(--spice-subtext, rgba(255,255,255,0.7))";
 
             const button = document.createElement("button");
             button.id = BUTTON_ID;
@@ -174,6 +172,7 @@
             });
 
             container.appendChild(label);
+            container.appendChild(sublabel);
             container.appendChild(button);
             header.appendChild(container);
         }
@@ -185,6 +184,13 @@
         const label = document.getElementById(LABEL_ID);
         if (label) {
             label.textContent = text;
+        }
+    }
+
+    function updateSubLabel(text) {
+        const sublabel = document.getElementById(SUBLABEL_ID);
+        if (sublabel) {
+            sublabel.textContent = text;
         }
     }
 
@@ -203,13 +209,15 @@
     function renderCachedState() {
         const cache = readCache();
         if (!cache || typeof cache.totalDurationMs !== "number") {
-            updateLabel("Generate playtime to cache the full Liked Songs total");
+            updateLabel("0 days 0 hr 0 min");
+            updateSubLabel("Cached on -");
             return;
         }
 
         const durationText = formatDuration(cache.totalDurationMs);
         const updatedText = formatUpdatedAt(cache.updatedAt);
-        updateLabel(updatedText ? `${durationText} cached on ${updatedText}` : durationText);
+        updateLabel(durationText);
+        updateSubLabel(updatedText ? `Cached on ${updatedText}` : "Cached on -");
     }
 
     async function calculateAndStorePlaytime() {
@@ -219,7 +227,8 @@
 
         isCalculating = true;
         updateButtonState(true);
-        updateLabel("Generating playtime...");
+        updateLabel("Generating...");
+        updateSubLabel("Cached on -");
 
         try {
             const likedSongsUri = getLikedSongsUri();
