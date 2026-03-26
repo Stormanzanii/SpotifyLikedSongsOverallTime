@@ -13,7 +13,7 @@ It adds a manual `Generate Playtime` button to the `Liked Songs` header, calcula
 
 ## Installation
 
-### Option 1: PowerShell installer
+### Option 1: One-Line Automatic PowerShell Install
 
 Run this from PowerShell:
 
@@ -21,7 +21,8 @@ Run this from PowerShell:
 irm https://raw.githubusercontent.com/Stormanzanii/SpotifyLikedSongsOverallTime/main/install.ps1 | iex
 ```
 
-### Option 2: Manual install
+
+### Option 2: Manual Install
 
 1. Copy [SpotifyLikedSongsOverallTime.js](/SpotifyLikedSongsOverallTime.js) into your Spicetify `Extensions` folder.
 2. Enable the extension:
@@ -33,6 +34,12 @@ spicetify apply
 
 3. Open `Liked Songs`.
 4. Click `Generate Playtime`.
+
+## One-Line Automatic PowerShell Uninstall
+
+```powershell
+irm https://raw.githubusercontent.com/Stormanzanii/SpotifyLikedSongsOverallTime/main/uninstall.ps1 | iex
+```
 
 ## Notes
 
