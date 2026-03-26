@@ -37,10 +37,8 @@ spicetify apply
 
 ## Uninstall
 
-### One-Line Automatic PowerShell Uninstall
-
 ```powershell
-irm https://raw.githubusercontent.com/Stormanzanii/SpotifyLikedSongsOverallTime/main/uninstall.ps1 | iex
+irm https://raw.githubusercontent.com/Stormanzanii/LikedSongsOverallTime/main/uninstall.ps1 | iex
 ```
 
 ## Notes
