@@ -1,4 +1,4 @@
-# Liked Songs Overall Time
+# Spotify Liked Songs Overall Time
 
 A Spicetify extension that adds cached total playtime for `Liked Songs`.
 
@@ -23,7 +23,7 @@ irm https://raw.githubusercontent.com/Stormanzanii/LikedSongsOverallTime/main/in
 
 ### Option 2: Manual install
 
-1. Copy [liked-songs-overall-time.js](/liked-songs-overall-time.js) into your Spicetify `Extensions` folder.
+1. Copy [SpotifyLikedSongsOverallTime.js](/SpotifyLikedSongsOverallTime.js) into your Spicetify `Extensions` folder.
 2. Enable the extension:
 
 ```powershell
@@ -39,7 +39,3 @@ spicetify apply
 - Route: `/collection/tracks`
 - Data source: `Spicetify.Platform.PlaylistAPI.getContents(...)`
 - Cache storage: `Spicetify.LocalStorage`
-
-## License
-
-MIT
