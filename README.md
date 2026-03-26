@@ -35,7 +35,9 @@ spicetify apply
 3. Open `Liked Songs`.
 4. Click `Generate Playtime`.
 
-## One-Line Automatic PowerShell Uninstall
+## Uninstall
+
+### One-Line Automatic PowerShell Uninstall
 
 ```powershell
 irm https://raw.githubusercontent.com/Stormanzanii/SpotifyLikedSongsOverallTime/main/uninstall.ps1 | iex
