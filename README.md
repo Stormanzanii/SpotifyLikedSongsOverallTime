@@ -15,10 +15,10 @@ It adds a manual `Generate Playtime` button to the `Liked Songs` header, calcula
 
 ### Option 1: PowerShell installer
 
-Run [install.ps1](/install.ps1) from this repository:
+Run this from PowerShell:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1
+irm https://raw.githubusercontent.com/Stormanzanii/LikedSongsOverallTime/main/install.ps1 | iex
 ```
 
 ### Option 2: Manual install
