@@ -1,17 +1,17 @@
 param(
-    [string]$SpicetifyPath = "$env:APPDATA\\spicetify"
+    [string]$SpicetifyPath = "$env:APPDATA\\spicetify",
+    [string]$RepoOwner = "Stormanzanii",
+    [string]$RepoName = "LikedSongsOverallTime",
+    [string]$Branch = "main"
 )
 
 $ErrorActionPreference = "Stop"
 
 $extensionName = "liked-songs-overall-time.js"
-$sourceFile = Join-Path $PSScriptRoot $extensionName
 $extensionsDir = Join-Path $SpicetifyPath "Extensions"
 $targetFile = Join-Path $extensionsDir $extensionName
-
-if (-not (Test-Path $sourceFile)) {
-    throw "Extension file not found: $sourceFile"
-}
+$rawBaseUrl = "https://raw.githubusercontent.com/$RepoOwner/$RepoName/$Branch"
+$downloadUrl = "$rawBaseUrl/$extensionName"
 
 if (-not (Get-Command spicetify -ErrorAction SilentlyContinue)) {
     throw "Spicetify CLI was not found in PATH."
@@ -21,7 +21,7 @@ if (-not (Test-Path $extensionsDir)) {
     New-Item -ItemType Directory -Path $extensionsDir | Out-Null
 }
 
-Copy-Item -Path $sourceFile -Destination $targetFile -Force
+Invoke-WebRequest -UseBasicParsing -Uri $downloadUrl -OutFile $targetFile
 
 $configOutput = spicetify config extensions
 $hasExtension = $false
