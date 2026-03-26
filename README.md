@@ -27,7 +27,7 @@ irm https://raw.githubusercontent.com/Stormanzanii/SpotifyLikedSongsOverallTime/
 2. Enable the extension:
 
 ```powershell
-spicetify config extensions liked-songs-overall-time.js
+spicetify config extensions SpotifyLikedSongsOverallTime.js
 spicetify apply
 ```
 
