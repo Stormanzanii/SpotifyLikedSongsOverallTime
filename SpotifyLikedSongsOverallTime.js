@@ -9,10 +9,12 @@
     const SUBLABEL_ID = "liked-songs-overall-time-sublabel";
     const BUTTON_ID = "liked-songs-overall-time-button";
     const CACHE_KEY = "liked-songs-overall-time-cache-v4";
+    const AUTO_REFRESH_INTERVAL_MS = 1000 * 60 * 90;
 
     let renderScheduled = false;
     let routePollTimer = null;
     let isCalculating = false;
+    let lastAutoRefreshAttemptAt = 0;
 
     function waitForSpicetify() {
         if (!window.Spicetify?.Platform?.History || !window.Spicetify?.Platform?.PlaylistAPI || !window.Spicetify?.Platform?.LibraryAPI) {
@@ -220,15 +222,28 @@
         updateSubLabel(updatedText ? `Cached on ${updatedText}` : "Cached on -");
     }
 
-    async function calculateAndStorePlaytime() {
+    function shouldAutoRefresh() {
+        const cache = readCache();
+        if (!cache || typeof cache.updatedAt !== "number") {
+            return true;
+        }
+
+        const now = Date.now();
+        return now - cache.updatedAt >= AUTO_REFRESH_INTERVAL_MS;
+    }
+
+    async function calculateAndStorePlaytime(options = {}) {
         if (isCalculating) {
             return;
         }
 
+        const silent = Boolean(options.silent);
         isCalculating = true;
         updateButtonState(true);
-        updateLabel("Generating...");
-        updateSubLabel("Cached on -");
+        if (!silent) {
+            updateLabel("Generating...");
+            updateSubLabel("Cached on -");
+        }
 
         try {
             const likedSongsUri = getLikedSongsUri();
@@ -266,6 +281,18 @@
         ensureUI(header);
         updateButtonState(isCalculating);
         renderCachedState();
+
+        if (!isCalculating && shouldAutoRefresh()) {
+            const now = Date.now();
+            if (now - lastAutoRefreshAttemptAt >= 60000) {
+                lastAutoRefreshAttemptAt = now;
+                calculateAndStorePlaytime({ silent: true }).catch((error) => {
+                    console.error("liked-songs-overall-time", error);
+                    updateButtonState(false);
+                    renderCachedState();
+                });
+            }
+        }
     }
 
     waitForSpicetify();

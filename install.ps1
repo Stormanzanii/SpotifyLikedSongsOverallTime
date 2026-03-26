@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$extensionName = "liked-songs-overall-time.js"
+$extensionName = "SpotifyLikedSongsOverallTime.js"
 $extensionsDir = Join-Path $SpicetifyPath "Extensions"
 $targetFile = Join-Path $extensionsDir $extensionName
 $rawBaseUrl = "https://raw.githubusercontent.com/$RepoOwner/$RepoName/$Branch"

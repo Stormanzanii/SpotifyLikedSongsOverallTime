@@ -18,9 +18,8 @@ It adds a manual `Generate Playtime` button to the `Liked Songs` header, calcula
 Run this from PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/Stormanzanii/SpotifyLikedSongsOverallTime/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/Stormanzanii/LikedSongsOverallTime/main/install.ps1 | iex
 ```
-
 
 ### Option 2: Manual Install
 
