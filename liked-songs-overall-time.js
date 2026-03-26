@@ -4,18 +4,17 @@
     const ROUTE = "/collection/tracks";
     const HEADER_SELECTOR = ".main-entityHeader-headerText";
     const TITLE_SELECTOR = "h1";
+    const CONTAINER_ID = "liked-songs-overall-time-container";
     const LABEL_ID = "liked-songs-overall-time-label";
-    const ROW_SELECTOR = '[data-testid="tracklist-row"]';
-    const DURATION_SELECTOR = '[data-testid="track-duration"], .main-trackList-rowDuration';
-    const TRACK_COUNT_SELECTOR = '[data-testid="playlist-tracklist-count"], .main-entityHeader-metaData span';
-    const TOTAL_COUNT_CACHE_KEY = "liked-songs-overall-time-total-count-v1";
+    const BUTTON_ID = "liked-songs-overall-time-button";
+    const CACHE_KEY = "liked-songs-overall-time-cache-v4";
 
     let renderScheduled = false;
-    let observer = null;
-    let totalCountPromise = null;
+    let routePollTimer = null;
+    let isCalculating = false;
 
     function waitForSpicetify() {
-        if (!window.Spicetify?.Platform?.History) {
+        if (!window.Spicetify?.Platform?.History || !window.Spicetify?.Platform?.PlaylistAPI || !window.Spicetify?.Platform?.LibraryAPI) {
             setTimeout(waitForSpicetify, 300);
             return;
         }
@@ -29,37 +28,28 @@
     }
 
     function handleRouteChange() {
-        disconnectObserver();
-
-        if (!isLikedSongsPage()) {
-            document.getElementById(LABEL_ID)?.remove();
-            return;
+        if (routePollTimer) {
+            clearInterval(routePollTimer);
+            routePollTimer = null;
         }
 
         scheduleRender();
-        attachObserver();
-    }
 
-    function attachObserver() {
-        observer = new MutationObserver(() => {
-            if (!isLikedSongsPage()) {
-                return;
-            }
-
-            scheduleRender();
-        });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-        });
-    }
-
-    function disconnectObserver() {
-        if (observer) {
-            observer.disconnect();
-            observer = null;
+        if (!isLikedSongsPage()) {
+            document.getElementById(CONTAINER_ID)?.remove();
+            return;
         }
+
+        let attempts = 0;
+        routePollTimer = setInterval(() => {
+            attempts += 1;
+            scheduleRender();
+
+            if (document.getElementById(CONTAINER_ID) || attempts >= 20 || !isLikedSongsPage()) {
+                clearInterval(routePollTimer);
+                routePollTimer = null;
+            }
+        }, 500);
     }
 
     function scheduleRender() {
@@ -70,12 +60,16 @@
         renderScheduled = true;
         requestAnimationFrame(() => {
             renderScheduled = false;
-            renderLikedSongsDuration();
+            renderUI();
         });
     }
 
     function isLikedSongsPage() {
         return Spicetify.Platform.History.location?.pathname === ROUTE;
+    }
+
+    function getLikedSongsUri() {
+        return Spicetify.Platform.LibraryAPI._likedSongsUri;
     }
 
     function findLikedSongsHeader() {
@@ -90,111 +84,21 @@
         return title.closest(HEADER_SELECTOR) || title.parentElement?.closest(HEADER_SELECTOR) || null;
     }
 
-    function ensureLabel(header) {
-        let label = document.getElementById(LABEL_ID);
-        if (label && label.parentElement !== header) {
-            label.remove();
-            label = null;
-        }
-
-        if (!label) {
-            label = document.createElement("div");
-            label.id = LABEL_ID;
-            label.className = "main-entityHeader-metaData main-type-mesto";
-            label.style.marginTop = "8px";
-            label.style.fontSize = "0.875rem";
-            label.style.color = "var(--spice-subtext, rgba(255,255,255,0.7))";
-            header.appendChild(label);
-        }
-
-        return label;
-    }
-
-    function readCachedTotalCount() {
+    function readCache() {
         try {
-            const raw = Spicetify.LocalStorage.get(TOTAL_COUNT_CACHE_KEY);
-            const parsed = raw ? JSON.parse(raw) : null;
-            return typeof parsed?.count === "number" ? parsed.count : null;
+            const raw = Spicetify.LocalStorage.get(CACHE_KEY);
+            return raw ? JSON.parse(raw) : null;
         } catch {
             return null;
         }
     }
 
-    function writeCachedTotalCount(count) {
+    function writeCache(cache) {
         try {
-            Spicetify.LocalStorage.set(TOTAL_COUNT_CACHE_KEY, JSON.stringify({
-                count,
-                updatedAt: Date.now(),
-            }));
+            Spicetify.LocalStorage.set(CACHE_KEY, JSON.stringify(cache));
         } catch {
             // Ignore cache write failures.
         }
-    }
-
-    function getAccessToken() {
-        const token = Spicetify.Platform.Session?.accessToken;
-        return typeof token === "string" && token.length > 0 ? token : null;
-    }
-
-    async function fetchLikedSongsTotalCount() {
-        if (totalCountPromise) {
-            return totalCountPromise;
-        }
-
-        totalCountPromise = (async () => {
-            const token = getAccessToken();
-            if (!token) {
-                throw new Error("Spotify session token is not ready yet.");
-            }
-
-            const response = await fetch("https://api.spotify.com/v1/me/tracks?limit=1&offset=0", {
-                headers: {
-                    authorization: `Bearer ${token}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(`Spotify API request failed with status ${response.status}.`);
-            }
-
-            const data = await response.json();
-            const count = Number(data?.total ?? 0);
-            writeCachedTotalCount(count);
-            return count;
-        })();
-
-        try {
-            return await totalCountPromise;
-        } finally {
-            totalCountPromise = null;
-        }
-    }
-
-    function refreshTotalCountInBackground() {
-        fetchLikedSongsTotalCount().catch(() => {
-            // Keep the UI on cached/DOM data if the total-count request fails.
-        });
-    }
-
-    function parseDurationText(text) {
-        if (!text) {
-            return 0;
-        }
-
-        const parts = text.trim().split(":").map(Number);
-        if (parts.some((part) => Number.isNaN(part))) {
-            return 0;
-        }
-
-        if (parts.length === 2) {
-            return (parts[0] * 60 + parts[1]) * 1000;
-        }
-
-        if (parts.length === 3) {
-            return (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000;
-        }
-
-        return 0;
     }
 
     function formatDuration(totalMs) {
@@ -214,47 +118,134 @@
         return parts.join(" ");
     }
 
-    function getLoadedTrackStats() {
-        const rows = Array.from(document.querySelectorAll(ROW_SELECTOR));
-        let totalDurationMs = 0;
-        let loadedTracks = 0;
-
-        for (const row of rows) {
-            const durationNode = row.querySelector(DURATION_SELECTOR);
-            const durationMs = parseDurationText(durationNode?.textContent ?? "");
-            if (durationMs > 0) {
-                totalDurationMs += durationMs;
-                loadedTracks += 1;
-            }
+    function formatUpdatedAt(timestamp) {
+        if (!timestamp) {
+            return "";
         }
 
-        return {
-            loadedTracks,
-            totalDurationMs,
-        };
+        try {
+            return new Date(timestamp).toLocaleString();
+        } catch {
+            return "";
+        }
     }
 
-    function getTotalTrackCount() {
-        const cachedCount = readCachedTotalCount();
-        if (typeof cachedCount === "number") {
-            return cachedCount;
+    function ensureUI(header) {
+        let container = document.getElementById(CONTAINER_ID);
+        if (container && container.parentElement !== header) {
+            container.remove();
+            container = null;
         }
 
-        const nodes = Array.from(document.querySelectorAll(TRACK_COUNT_SELECTOR));
-        for (const node of nodes) {
-            const text = node.textContent ?? "";
-            const match = text.match(/([\d,]+)\s+song/i);
-            if (match) {
-                return Number(match[1].replace(/,/g, ""));
-            }
+        if (!container) {
+            container = document.createElement("div");
+            container.id = CONTAINER_ID;
+            container.className = "main-entityHeader-metaData main-type-mesto";
+            container.style.marginTop = "8px";
+            container.style.display = "flex";
+            container.style.alignItems = "center";
+            container.style.gap = "12px";
+            container.style.flexWrap = "wrap";
+
+            const label = document.createElement("div");
+            label.id = LABEL_ID;
+            label.style.fontSize = "0.875rem";
+            label.style.color = "var(--spice-subtext, rgba(255,255,255,0.7))";
+
+            const button = document.createElement("button");
+            button.id = BUTTON_ID;
+            button.type = "button";
+            button.textContent = "Generate Playtime";
+            button.style.border = "1px solid rgba(255,255,255,0.28)";
+            button.style.background = "transparent";
+            button.style.color = "var(--spice-text, #fff)";
+            button.style.borderRadius = "999px";
+            button.style.padding = "6px 12px";
+            button.style.fontSize = "0.8125rem";
+            button.style.fontWeight = "600";
+            button.style.cursor = "pointer";
+
+            button.addEventListener("click", () => {
+                calculateAndStorePlaytime().catch((error) => {
+                    console.error("liked-songs-overall-time", error);
+                    updateLabel("Playtime generation failed");
+                    updateButtonState(false);
+                });
+            });
+
+            container.appendChild(label);
+            container.appendChild(button);
+            header.appendChild(container);
         }
 
-        return null;
+        return container;
     }
 
-    function renderLikedSongsDuration() {
+    function updateLabel(text) {
+        const label = document.getElementById(LABEL_ID);
+        if (label) {
+            label.textContent = text;
+        }
+    }
+
+    function updateButtonState(disabled) {
+        const button = document.getElementById(BUTTON_ID);
+        if (!button) {
+            return;
+        }
+
+        button.disabled = disabled;
+        button.style.opacity = disabled ? "0.65" : "1";
+        button.style.cursor = disabled ? "default" : "pointer";
+        button.textContent = disabled ? "Generating..." : "Generate Playtime";
+    }
+
+    function renderCachedState() {
+        const cache = readCache();
+        if (!cache || typeof cache.totalDurationMs !== "number") {
+            updateLabel("Generate playtime to cache the full Liked Songs total");
+            return;
+        }
+
+        const durationText = formatDuration(cache.totalDurationMs);
+        const updatedText = formatUpdatedAt(cache.updatedAt);
+        updateLabel(updatedText ? `${durationText} cached on ${updatedText}` : durationText);
+    }
+
+    async function calculateAndStorePlaytime() {
+        if (isCalculating) {
+            return;
+        }
+
+        isCalculating = true;
+        updateButtonState(true);
+        updateLabel("Generating playtime...");
+
+        try {
+            const likedSongsUri = getLikedSongsUri();
+            const contents = await Spicetify.Platform.PlaylistAPI.getContents(likedSongsUri);
+            const items = Array.isArray(contents?.items) ? contents.items : [];
+
+            const totalDurationMs = items.reduce((sum, item) => {
+                return sum + Number(item?.duration?.milliseconds ?? 0);
+            }, 0);
+
+            writeCache({
+                totalDurationMs,
+                totalTracks: Number(contents?.totalLength ?? items.length),
+                updatedAt: Date.now(),
+            });
+
+            renderCachedState();
+        } finally {
+            isCalculating = false;
+            updateButtonState(false);
+        }
+    }
+
+    function renderUI() {
         if (!isLikedSongsPage()) {
-            document.getElementById(LABEL_ID)?.remove();
+            document.getElementById(CONTAINER_ID)?.remove();
             return;
         }
 
@@ -263,30 +254,9 @@
             return;
         }
 
-        const label = ensureLabel(header);
-        const stats = getLoadedTrackStats();
-        const totalTrackCount = getTotalTrackCount();
-
-        if (totalTrackCount === null) {
-            refreshTotalCountInBackground();
-        }
-
-        if (stats.loadedTracks === 0) {
-            if (totalTrackCount) {
-                label.textContent = `Scroll the list to calculate playtime (0/${totalTrackCount} tracks loaded)`;
-            } else {
-                label.textContent = "Scroll the list to calculate playtime";
-            }
-            return;
-        }
-
-        const durationText = formatDuration(stats.totalDurationMs);
-        if (totalTrackCount && stats.loadedTracks < totalTrackCount) {
-            label.textContent = `${durationText} loaded (${stats.loadedTracks}/${totalTrackCount} tracks)`;
-            return;
-        }
-
-        label.textContent = durationText;
+        ensureUI(header);
+        updateButtonState(isCalculating);
+        renderCachedState();
     }
 
     waitForSpicetify();

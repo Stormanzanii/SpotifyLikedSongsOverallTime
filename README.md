@@ -1,6 +1,6 @@
 # Liked Songs Overall Time
 
-Spicetify extension that shows the total playtime for `Liked Songs`, similar to the duration shown on normal playlists.
+Spicetify extension that adds a manual `Generate Playtime` button to `Liked Songs` and caches the full total duration locally.
 
 ## Install
 
@@ -13,9 +13,10 @@ spicetify apply
 ```
 
 3. Restart Spotify if needed, then open `Liked Songs`.
+4. Click `Generate Playtime` on the `Liked Songs` page.
 
 ## Notes
 
 - The extension runs on the `Liked Songs` page at `/collection/tracks`.
-- It uses `Spicetify.Platform.LibraryAPI.getTracks(...)` against Spotify's internal liked-songs collection.
-- Results are cached for 30 minutes and refreshed automatically when your liked-song count changes.
+- It uses `Spicetify.Platform.PlaylistAPI.getContents(...)` with the `Liked Songs` collection URI.
+- The button computes the full total on demand and stores the result in local cache.
